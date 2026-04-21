@@ -1,20 +1,5 @@
 # デプロイチェックリスト — blog.kaseken.dev
 
-## サイト情報の書き換え
-
-- [ ] **favicon** を差し替える
-  - `public/favicon.svg` — SVG版（ブラウザタブ・ブックマーク）
-  - `public/favicon.ico` — ICO版（旧ブラウザ向け）
-- [ ] **`src/consts.ts`** のディスクリプションを最終確認
-  - 現状: `'技術メモ・学びの記録'`
-
-## About ページ (`src/pages/about.astro`)
-
-- [ ] Lorem ipsumプレースホルダーテキストを自己紹介に書き換える
-- [ ] `heroImage` をプレースホルダー画像から差し替える
-  - 現状: `src/assets/blog-placeholder-about.jpg`
-- [ ] `pubDate={new Date('August 08 2021')}` を削除またはブログ開設日に変更する
-
 ## コンテンツ
 
 - [ ] **最初の実記事を1件追加する**（空サイトのままデプロイしない）
