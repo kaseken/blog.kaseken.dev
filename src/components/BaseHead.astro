@@ -56,3 +56,12 @@ const ogImageUrl = ogImage ? new URL(ogImage, Astro.site) : new URL(image.src, A
 <meta property="twitter:title" content={title} />
 <meta property="twitter:description" content={description} />
 <meta property="twitter:image" content={ogImageUrl} />
+
+<!-- Google Analytics (via Partytown) -->
+<script type="text/partytown" async src="https://www.googletagmanager.com/gtag/js?id=G-C5L1CPKZB1"></script>
+<script type="text/partytown">
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-C5L1CPKZB1');
+</script>

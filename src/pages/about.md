@@ -4,7 +4,8 @@ title: About
 description: kaseken — Software Engineer based in Tokyo
 ---
 
-Hi, I'm kaseken (Kent Kaseda) — a software engineer based in Tokyo.
+Hi, I'm kaseken (Kent Kaseda) — a Software Engineer based in Tokyo.  
+This blog explores core computer science concepts through the lens of mobile technology.
 
 ## Experience
 
@@ -22,7 +23,6 @@ Hi, I'm kaseken (Kent Kaseda) — a software engineer based in Tokyo.
 
 ### playground Co., Ltd. — Software Engineer (2019/11 – 2021/03)
 
-- Developed systems for electronic tickets used in live events.
 - Backend development with Ruby, Rails, and MySQL.
 - Frontend development with TypeScript, Angular, and RxJS.
 - iOS development with Swift.
