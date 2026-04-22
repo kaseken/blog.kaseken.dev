@@ -1,13 +1,23 @@
 // @ts-check
 
 import mdx from '@astrojs/mdx';
+import partytown from '@astrojs/partytown';
 import sitemap from '@astrojs/sitemap';
 import { defineConfig, fontProviders } from 'astro/config';
 
 // https://astro.build/config
 export default defineConfig({
 	site: 'https://blog.kaseken.dev',
-	integrations: [mdx(), sitemap()],
+	integrations: [
+		mdx(),
+		sitemap(),
+		partytown({
+			config: {
+				forward: ['dataLayer.push'],
+				debug: false,
+			},
+		}),
+	],
 	markdown: {
 		shikiConfig: {
 			theme: 'github-dark',
