@@ -5,8 +5,6 @@ pubDate: 2026-04-22
 tags: ["kotlin", "android", "coroutines", "kotlin-coroutines-flow"]
 ---
 
-
-
 > **Japanese version:** This article is also available in Japanese on [Zenn](https://zenn.dev/kaseken/articles/aa47be76ffba9d).
 
 **Kotlin Coroutines Flow** is now widely used in both Android app development and server-side Kotlin. Yet, many developers use it without fully understanding how it works internally.
@@ -16,7 +14,9 @@ The primary audience is intermediate developers who know the basic specs of Flow
 
 For an overview of Kotlin Coroutines internals, please refer to my talk at Kotlin Fest 2025.
 
-[Watch on YouTube](https://youtu.be/oIaL8X8q2Gk)
+<div style="display: flex; justify-content: center;">
+<iframe width="560" height="315" src="https://www.youtube.com/embed/oIaL8X8q2Gk?si=X-ALvSjgcolnsLIj" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+</div>
 
 > **Note:** The version of `kotlinx.coroutines`[^1] used in this article is [v1.10.2](https://github.com/Kotlin/kotlinx.coroutines/releases/tag/1.10.2), the latest version at the time of writing.
 
@@ -49,8 +49,7 @@ fun main() = runBlocking<Unit> {
 
 [**▶️ Run in Playground**](https://pl.kotl.in/kZ5MMbwGu)
 
-Running this code produces the following output. We can see that values are emitted every 100ms, and the execution thread is not blocked.
-Also, notice that "Flow started" is printed *after* "Calling collect...", which tells us that the processing inside `flow` only begins after `collect` is called. A Flow that does not start processing until a **Terminal Operator** such as `collect` is called is known as a **Cold Flow**.
+Running this code produces the following output. 
 
 ```
 Calling collect...
@@ -63,17 +62,22 @@ I'm not blocked 3
 3
 ```
 
+We can see that values are emitted every 100ms, and the execution thread is not blocked.
+Also, notice that "Flow started" is printed *after* "Calling collect...", which tells us that the processing inside `flow` only begins after `collect` is called. A Flow that does not start processing until a **Terminal Operator** such as `collect` is called is known as a **Cold Flow**.
+
 This behavior is fundamental knowledge that most Kotlin engineers are familiar with.
 But can you explain *why* this behavior occurs under the hood?
 In the following sections, we will decode the internal implementation of three key functions — `flow`, `emit`, and `collect` — to reveal the mechanism behind it.
 
 ## Internal Implementation of the Flow Builder (`flow` function)
 
-Functions used to create a Flow are called **Flow Builders**.
-The `flow {}` seen in the sample code above is one type of Flow Builder.
+Functions used to create a Flow are called **Flow Builders**. The `flow {}` seen in the sample code above is one type of Flow Builder.
 
 Here is the implementation of the `flow` function:
 
+```kt
+public fun <T> flow(@BuilderInference block: suspend FlowCollector<T>.() -> Unit): Flow<T> = SafeFlow(block)
+```
 [View source on GitHub](https://github.com/Kotlin/kotlinx.coroutines/blob/5f8900478a8e20c073145b1608fbc71fe3d7378b/kotlinx-coroutines-core/common/src/flow/Builders.kt#L52)
 
 The `flow` function itself is simple: it takes a `block` argument and uses it to create and return an instance of the `SafeFlow` class (we'll cover `SafeFlow` shortly).
@@ -148,6 +152,15 @@ Next, let's look at what `FlowCollector` is.
 
 Here is the implementation of `FlowCollector`:
 
+```kt
+public fun interface FlowCollector<in T> {
+    /**
+     * Collects the value emitted by the upstream.
+     * This method is not thread-safe and should not be invoked concurrently.
+     */
+    public suspend fun emit(value: T)
+}
+```
 [View source on GitHub](https://github.com/Kotlin/kotlinx.coroutines/blob/5f8900478a8e20c073145b1608fbc71fe3d7378b/kotlinx-coroutines-core/common/src/flow/FlowCollector.kt#L25-L32)
 
 `FlowCollector` is a **Functional Interface** (also known as a **Single Abstract Method (SAM) interface**)[^5].
@@ -174,6 +187,11 @@ fun main() {
 To understand what `FlowCollector` is for, we need to look at `Flow` itself.
 `Flow` is an interface with **only one function: `collect`**.
 
+```kt
+public interface Flow<out T> {
+    public suspend fun collect(collector: FlowCollector<T>)
+}
+```
 [View source on GitHub](https://github.com/Kotlin/kotlinx.coroutines/blob/5f8900478a8e20c073145b1608fbc71fe3d7378b/kotlinx-coroutines-core/common/src/flow/Flow.kt#L176-L195)
 
 The `collect` function takes a `FlowCollector` as its argument.
@@ -182,7 +200,7 @@ This means that passing a lambda to `collect` is equivalent to explicitly constr
 ```kt
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-               
+
 fun simple(): Flow<Int> = flow {
     for (i in 1..3) {
         delay(100)
@@ -211,15 +229,39 @@ To verify this, let's finally look at the `SafeFlow` implementation we set aside
 
 As a reminder, the `flow` function takes a `block` argument and returns an instance of `SafeFlow`.
 
+```kt
+public fun <T> flow(@BuilderInference block: suspend FlowCollector<T>.() -> Unit): Flow<T> = SafeFlow(block)
+```
 [View source on GitHub](https://github.com/Kotlin/kotlinx.coroutines/blob/5f8900478a8e20c073145b1608fbc71fe3d7378b/kotlinx-coroutines-core/common/src/flow/Builders.kt#L52)
 
 Looking at the `SafeFlow` implementation, we find a `collectSafely` function.
 In `collectSafely`, a `FlowCollector` is received, and `block` (the lambda with `FlowCollector` as its receiver) is invoked.
 
+```kt
+private class SafeFlow<T>(private val block: suspend FlowCollector<T>.() -> Unit) : AbstractFlow<T>() {
+    override suspend fun collectSafely(collector: FlowCollector<T>) {
+        collector.block()
+    }
+}
+```
 [View source on GitHub](https://github.com/Kotlin/kotlinx.coroutines/blob/5f8900478a8e20c073145b1608fbc71fe3d7378b/kotlinx-coroutines-core/common/src/flow/Builders.kt#L55-L59)
 
 `SafeFlow<T>` extends `AbstractFlow<T>`. Here is the source of `AbstractFlow`:
 
+```kt
+public abstract class AbstractFlow<T> : Flow<T>, CancellableFlow<T> {
+    public final override suspend fun collect(collector: FlowCollector<T>) {
+        val safeCollector = SafeCollector(collector, coroutineContext)
+        try {
+            collectSafely(safeCollector)
+        } finally {
+            safeCollector.releaseIntercepted()
+        }
+    }
+
+    public abstract suspend fun collectSafely(collector: FlowCollector<T>)
+}
+```
 [View source on GitHub](https://github.com/Kotlin/kotlinx.coroutines/blob/5f8900478a8e20c073145b1608fbc71fe3d7378b/kotlinx-coroutines-core/common/src/flow/Flow.kt#L221-L246)
 
 Inside `AbstractFlow`'s `collect`, `collectSafely` is called.
@@ -252,8 +294,6 @@ That said, there is much more to Flow. The following topics will each be covered
 - **How Buffering and Conflation work**
 - **Flow cancellation mechanism**
 - **Flow error handling mechanism**
-
----
 
 [^1]: `Kotlin/kotlinx.coroutines`: https://github.com/Kotlin/kotlinx.coroutines
 [^2]: Flow sample code in Kotlin docs: https://kotlinlang.org/docs/flow.html#flows

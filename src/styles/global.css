@@ -83,6 +83,11 @@ p {
 .prose li p {
 	margin-bottom: 0;
 }
+[data-footnotes] {
+	margin-top: 3em;
+	border-top: 1px solid rgb(var(--gray-light));
+	padding-top: 1.5em;
+}
 [data-footnotes] ol {
 	padding-left: 1.2em;
 	margin: 0;
